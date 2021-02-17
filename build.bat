@@ -16,9 +16,9 @@ exit
 :UnitTest
 python -m pytest
 if not %ERRORLEVEL% == 0 (
-   echo Unit test failed
-   call :CleanEnv
-   goto :exit
+    echo Unit test failed
+    call :CleanEnv
+    goto :exit
 ) 
 echo Unit test passed
 GoTo :EOF
@@ -39,16 +39,16 @@ echo|set /p="build %~nx1    "
 python %1 bdist_wheel >>build_log.log 2>>warning.tmp
 call :GetFileSize    warning.tmp
 if not %size% == 0 (
-	call :LogSubTitle    %~nx1    build_err.log
-	type warning.tmp >> build_err.log
+    call :LogSubTitle    %~nx1    build_err.log
+    type warning.tmp >> build_err.log
 )
 del /q warning.tmp
 if %ERRORLEVEL% == 0 (
-   echo.	Pass
+    echo.	Pass
 ) else (
-   
-   echo.	Fail
-   echo build %~nx1	Fail>>errors.tmp
+    
+    echo.	Fail
+    echo build %~nx1	Fail>>errors.tmp
 )
 GoTo :EOF
 
@@ -69,9 +69,9 @@ GoTo :EOF
 ::==============================================PrintBuildFailed======================================================================
 :PrintBuildFailed
 if exist errors.tmp  (
-  call :PrintTitle Build Failed
-  type errors.tmp
-  del errors.tmp /q
+    call :PrintTitle Build Failed
+    type errors.tmp
+    del errors.tmp /q
 )
 GoTo :EOF
 
