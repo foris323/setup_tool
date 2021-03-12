@@ -5449,8 +5449,12 @@ class Control():
         regName = searchProperties.get('RegexName', '')
         self.regexName = re.compile(regName) if regName else None
         self._supportedPatterns = {}
+        self.searchByWalk = False
+        self.isFirstChildFrom = None
+        self.isNextSiblingFrom = None
 
     def __str__(self) -> str:
+        self.Refind()
         rect = self.BoundingRectangle
         return 'ControlType: {0}    ClassName: {1}    AutomationId: {2}    Rect: {3}    Name: {4}    Handle: 0x{5:X}({5})'.format(
             self.ControlTypeName, self.ClassName, self.AutomationId, rect, self.Name, self.NativeWindowHandle)
@@ -5998,7 +6002,13 @@ class Control():
         Return `Control` subclass or None.
         """
         ele = _AutomationClient.instance().ViewWalker.GetFirstChildElement(self.Element)
-        return Control.CreateControlFromElement(ele)
+        control = Control.CreateControlFromElement(ele)
+
+        if self.searchByWalk:
+            self.searchByWalk = False
+        elif control:
+            control.isFirstChildFrom = self
+        return control
 
     def GetLastChildControl(self) -> 'Control':
         """
@@ -6012,7 +6022,13 @@ class Control():
         Return `Control` subclass or None.
         """
         ele = _AutomationClient.instance().ViewWalker.GetNextSiblingElement(self.Element)
-        return Control.CreateControlFromElement(ele)
+        control = Control.CreateControlFromElement(ele)
+
+        if self.searchByWalk:
+            self.searchByWalk = False
+        elif control:
+            control.isNextSiblingFrom = self
+        return control
 
     def GetPreviousSiblingControl(self) -> 'Control':
         """
@@ -6098,6 +6114,23 @@ class Control():
         Find control every searchIntervalSeconds seconds in maxSearchSeconds seconds.
         Return bool, True if find
         """
+
+        if self.isFirstChildFrom:
+            self.isFirstChildFrom.Refind()
+            self.isFirstChildFrom.searchByWalk = True
+            control = self.isFirstChildFrom.GetFirstChildControl()
+            self._element = control.Element
+            control._element = 0
+            return True
+
+        if self.isNextSiblingFrom:
+            self.isNextSiblingFrom.Refind()
+            self.isNextSiblingFrom.searchByWalk = True
+            control = self.isNextSiblingFrom.GetNextSiblingControl()
+            self._element = control.Element
+            control._element = 0
+            return True
+
         if self._element and self._elementDirectAssign:
             # if element is directly assigned, not by searching, just check whether self._element is valid
             # but I can't find an API in UIAutomation that can directly check
@@ -6187,6 +6220,7 @@ class Control():
             if raiseException:
                 Logger.ColorfullyLog(
                     '<Color=Red>Find Control Timeout: </Color>' + self.GetColorfulSearchPropertiesStr())
+                print(self.searchProperties.items())
                 raise LookupError('Find Control Timeout: ' +
                                   self.GetSearchPropertiesStr())
             else:
@@ -7937,6 +7971,7 @@ def WalkControl(control: Control, includeTop: bool = False, maxDepth: int = 0xFF
     if maxDepth <= 0:
         return
     depth = 0
+    control.searchByWalk = True
     child = control.GetFirstChildControl()
     controlList = [child]
     while depth >= 0:
@@ -7946,6 +7981,7 @@ def WalkControl(control: Control, includeTop: bool = False, maxDepth: int = 0xFF
             child = lastControl.GetNextSiblingControl()
             controlList[depth] = child
             if depth + 1 < maxDepth:
+                lastControl.searchByWalk = True
                 child = lastControl.GetFirstChildControl()
                 if child:
                     depth += 1
